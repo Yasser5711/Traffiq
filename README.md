@@ -1,4 +1,6 @@
-# TrafficLens
+<p align="center">
+  <img src="brand/traffiq-logo-480.png" alt="Traffiq" width="240" />
+</p>
 
 Self-hosted dashboard for the HTTP traffic of a Dokploy server. It tails Traefik's JSON
 access log, stores every request in SQLite and shows live KPIs, charts, failing/slow
@@ -36,7 +38,7 @@ Migrations in `./drizzle` are applied automatically at startup.
 | --- | --- | --- |
 | `PORT` | `3000` | HTTP port |
 | `ACCESS_LOG_PATH` | `/etc/dokploy/traefik/dynamic/access.log` | Traefik JSON access log |
-| `DB_PATH` | `/data/trafficlens.db` | SQLite database file |
+| `DB_PATH` | `/data/traffiq.db` | SQLite database file |
 | `AUTH_PASSWORD` | – | When set, the dashboard requires this password |
 | `SESSION_SECRET` | `AUTH_PASSWORD` | Key used to sign session cookies |
 | `SERVER_NAME` | `vps-01` | Name shown in the sidebar |
@@ -47,7 +49,7 @@ Migrations in `./drizzle` are applied automatically at startup.
 
 ```
 server/    collector (log tailing), parser, Drizzle schema, aggregations, Hono API
-web/       React dashboard (design.css comes from the TrafficLens design)
+web/       React dashboard (design.css comes from the TrafficLens design in Claude Design)
 shared/    types shared by API and UI
 scripts/   Traefik log simulator for local development
 drizzle/   SQL migrations

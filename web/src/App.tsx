@@ -209,7 +209,7 @@ export function App({ authEnabled, onLogout }: { authEnabled: boolean; onLogout:
               <strong style={{ fontWeight: 600 }}>{conn === 'disconnected' ? `Connection to ${serverName} lost.` : `Reconnecting to ${serverName}…`}</strong>{' '}
               <span style={{ color: 'var(--muted)' }}>
                 {serverDown
-                  ? 'TrafficLens can’t reach its server. Retrying automatically.'
+                  ? 'Traffiq can’t reach its server. Retrying automatically.'
                   : status.data?.lastError
                     ? `The Traefik access log can’t be read (${status.data.lastError}). ${lastEvent ? 'Showing data received up to ' + fmtHMS(lastEvent, prefs.tz) + '.' : ''}`
                     : 'The live stream dropped briefly. New requests will appear as soon as it is restored.'}

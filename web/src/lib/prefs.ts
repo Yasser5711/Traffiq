@@ -11,7 +11,7 @@ export interface Prefs {
   accent: 'violet' | 'blue';
 }
 
-const KEY = 'trafficlens:prefs';
+const KEY = 'traffiq:prefs';
 
 function browserTz() {
   try {

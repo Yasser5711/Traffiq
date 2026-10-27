@@ -4,6 +4,9 @@ html, body, #root { min-height: 100% }
 .tl a { color: var(--accent-text) }
 .btn.danger { color: var(--err) }
 
+/* Brand mark (the PNG has its own dark tile) */
+.logo-mark { display: block; flex: none; border-radius: 7px; box-shadow: 0 0 0 1px var(--border) }
+
 /* Keep navigation and connection status in view while scrolling long pages. */
 @media (min-width: 761px) { .side { position: sticky; top: 0; height: 100vh; overflow-y: auto } }
 

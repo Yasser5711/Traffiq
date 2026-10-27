@@ -139,4 +139,4 @@ if (existsSync(config.staticDir)) {
 startCollector();
 
 const server = Bun.serve({ port: config.port, fetch: app.fetch, idleTimeout: 0 });
-console.log(`[trafficlens] listening on http://localhost:${server.port}`);
+console.log(`[traffiq] listening on http://localhost:${server.port}`);

@@ -1,6 +1,6 @@
-# Déployer TrafficLens sur Dokploy
+# Déployer Traffiq sur Dokploy
 
-TrafficLens tourne sur le même VPS que Dokploy et lit le log d'accès de Traefik
+Traffiq tourne sur le même VPS que Dokploy et lit le log d'accès de Traefik
 (`/etc/dokploy/traefik/dynamic/access.log`). Rien ne sort du serveur.
 
 ## 1. Activer les logs d'accès de Traefik
@@ -49,7 +49,7 @@ la branche `master`.
 
 ## 3. Créer le service dans Dokploy
 
-1. **Create Service → Compose**, nomme-le `trafficlens`.
+1. **Create Service → Compose**, nomme-le `traffiq`.
 2. **Provider** : ton dépôt Git, branche `master`, compose path `./docker-compose.yml`.
 3. **Environment** :
 
@@ -64,7 +64,7 @@ la branche `master`.
    - `SESSION_SECRET` : génère-le, par exemple avec `openssl rand -hex 32`. Changer sa valeur déconnecte tout le monde.
    - `IGNORE_HOSTS` : mets le domaine du dashboard pour ne pas compter ses propres requêtes. Tu peux en mettre plusieurs, séparés par des virgules, par exemple le domaine du panneau Dokploy.
 
-4. **Domains → Add Domain** : service `trafficlens`, port `3000`, ton domaine,
+4. **Domains → Add Domain** : service `traffiq`, port `3000`, ton domaine,
    HTTPS activé avec Let's Encrypt.
 5. **Deploy**.
 
@@ -77,12 +77,12 @@ la branche `master`.
 
 ## Bon à savoir
 
-- **Données** : la base SQLite est dans le volume `trafficlens-data`. Elle survit aux
+- **Données** : la base SQLite est dans le volume `traffiq-data`. Elle survit aux
   redéploiements. Choisis la durée de conservation dans Settings (14 jours par défaut).
 - **Premier démarrage** : seuls les 64 derniers Mo du log sont importés (`BACKFILL_BYTES`).
 - **Nettoyage nocturne de Dokploy** : chaque nuit, Dokploy remplace le log par ses 1000
-  dernières lignes. TrafficLens détecte ce remplacement et n'importe pas ces lignes en double.
-  L'historique reste dans la base de TrafficLens.
+  dernières lignes. Traffiq détecte ce remplacement et n'importe pas ces lignes en double.
+  L'historique reste dans la base de Traffiq.
 - **Accès au log** : le dossier `/etc/dokploy/traefik/dynamic` est monté en lecture seule.
   Le conteneur tourne en root pour pouvoir lire le fichier, qui appartient à root sur l'hôte.
 - **Mise à jour** : pousse sur `master` puis clique **Deploy**, ou active l'auto-deploy du

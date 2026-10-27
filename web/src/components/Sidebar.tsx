@@ -31,11 +31,9 @@ export function Sidebar({ page, go, serverName, conn, lastEvent, tz, authEnabled
   return (
     <nav className="side" aria-label="Primary" style={{ flex: '0 0 216px', display: 'flex', flexDirection: 'column', gap: 2, padding: '14px 10px', borderRight: '1px solid var(--border)', background: 'var(--bg)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 8px 18px' }}>
-        <div style={{ width: 26, height: 26, borderRadius: 7, background: 'var(--accent-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flex: 'none' }}>
-          <Icon name="logo" style={{ width: 15, height: 15, strokeWidth: 2.2 }} />
-        </div>
+        <img className="logo-mark" src="/logo-mark.png" alt="" width={26} height={26} />
         <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-          <span style={{ fontWeight: 600, fontSize: 14, letterSpacing: '-0.01em' }}>TrafficLens</span>
+          <span style={{ fontWeight: 600, fontSize: 14, letterSpacing: '-0.01em' }}>Traffiq</span>
           <span className="mono" style={{ fontSize: 11, color: 'var(--muted)' }}>{serverName}</span>
         </div>
       </div>

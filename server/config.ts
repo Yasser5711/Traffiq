@@ -17,7 +17,7 @@ export const config = {
   serverName: env.SERVER_NAME || 'vps-01',
   // Traefik JSON access log. Dokploy writes it here on the host.
   logPath: env.ACCESS_LOG_PATH || (isProd ? '/etc/dokploy/traefik/dynamic/access.log' : './data/access.log'),
-  dbPath: env.DB_PATH || (isProd ? '/data/trafficlens.db' : './data/trafficlens.db'),
+  dbPath: env.DB_PATH || (isProd ? '/data/traffiq.db' : './data/traffiq.db'),
   // On first start, only import this many trailing bytes of an existing log.
   backfillBytes: int('BACKFILL_BYTES', 64 * 1024 * 1024),
   pollMs: int('POLL_MS', 1000),

@@ -27,7 +27,7 @@ export function Settings({ prefs, setPrefs, status, conn, reloadStatus }: Props)
     try {
       setTest(await api<{ ok: boolean; message: string }>('/status/test', { method: 'POST' }));
     } catch {
-      setTest({ ok: false, message: 'TrafficLens server is unreachable.' });
+      setTest({ ok: false, message: 'Traffiq server is unreachable.' });
     }
     setTesting(false);
     reloadStatus();
@@ -65,7 +65,7 @@ export function Settings({ prefs, setPrefs, status, conn, reloadStatus }: Props)
         <div className="srow" style={{ alignItems: 'flex-start' }}>
           <div className="sdesc" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <h2 id="set-src" style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Data source</h2>
-            <span className="lbl">TrafficLens reads the Traefik access log written by Dokploy on this server. Nothing leaves the VPS.</span>
+            <span className="lbl">Traffiq reads the Traefik access log written by Dokploy on this server. Nothing leaves the VPS.</span>
           </div>
           <span className={liveCls}><span className="dot" />{connShort}</span>
         </div>
@@ -113,7 +113,7 @@ export function Settings({ prefs, setPrefs, status, conn, reloadStatus }: Props)
         )}
         {row(
           <label htmlFor="s-range" style={{ fontWeight: 500 }}>Default time range</label>,
-          'The range selected when TrafficLens opens.',
+          'The range selected when Traffiq opens.',
           <select id="s-range" className="sel" value={prefs.defRange} onChange={e => setPrefs({ defRange: e.target.value as Prefs['defRange'] })} style={{ width: 180 }}>
             <option value="15m">Last 15 minutes</option>
             <option value="1h">Last hour</option>
@@ -163,7 +163,7 @@ export function Settings({ prefs, setPrefs, status, conn, reloadStatus }: Props)
           </select>,
         )}
       </section>
-      <span className="lbl" style={{ paddingLeft: 2 }}>TrafficLens {status?.version ?? ''}</span>
+      <span className="lbl" style={{ paddingLeft: 2 }}>Traffiq {status?.version ?? ''}</span>
     </div>
   );
 }

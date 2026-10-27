@@ -1,7 +1,6 @@
 import type { CSSProperties } from 'react';
 
 const PATHS = {
-  logo: <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5M8 13.5v-2M11 13.5v-5M14 13.5v-3" /></>,
   overview: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
   requests: <path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" />,
   globe: <><circle cx="12" cy="12" r="9.5" /><path d="M2.5 12h19M12 2.5a14.5 14.5 0 0 1 0 19M12 2.5a14.5 14.5 0 0 0 0 19" /></>,

@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from 'react';
 import { api } from '../lib/api';
-import { Icon } from '../components/Icon';
 
 export function Login({ onDone }: { onDone: () => void }) {
   const [password, setPassword] = useState('');
@@ -24,11 +23,9 @@ export function Login({ onDone }: { onDone: () => void }) {
     <div className="login">
       <form className="card" onSubmit={submit}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--accent-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-            <Icon name="logo" style={{ width: 16, height: 16, strokeWidth: 2.2 }} />
-          </div>
+          <img className="logo-mark" src="/logo-mark.png" alt="" width={32} height={32} style={{ borderRadius: 8 }} />
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-            <span style={{ fontWeight: 600, fontSize: 15 }}>TrafficLens</span>
+            <span style={{ fontWeight: 600, fontSize: 15 }}>Traffiq</span>
             <span className="lbl">Sign in to view traffic</span>
           </div>
         </div>

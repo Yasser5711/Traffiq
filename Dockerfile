@@ -13,7 +13,7 @@ FROM oven/bun:1.3.14-slim
 WORKDIR /app
 ENV NODE_ENV=production \
     PORT=3000 \
-    DB_PATH=/data/trafficlens.db \
+    DB_PATH=/data/traffiq.db \
     ACCESS_LOG_PATH=/traefik/access.log \
     STATIC_DIR=/app/dist
 
