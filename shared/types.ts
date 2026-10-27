@@ -51,6 +51,7 @@ export interface Series {
   c3: number[];
   c4: number[];
   c5: number[];
+  dur: number[]; // summed duration (ms) per bucket, for the average response time trend
 }
 
 export interface EndpointStat {

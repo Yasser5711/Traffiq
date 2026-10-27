@@ -1,20 +1,42 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Series } from '../../../shared/types';
 import { monoPath, niceMax } from '../lib/chart';
 import { RANGE_LABEL, type Scope } from '../lib/ctx';
 import { fmtCompact, fmtHM, fmtHMS, fmtInt, fmtWD } from '../lib/format';
+import { Icon } from './Icon';
 
 const W = 1000, H = 280;
 const GL = ['2xx', '3xx', '4xx', '5xx'], GN = ['Success', 'Redirect', 'Client error', 'Server error'];
 const KEYS = ['c2', 'c3', 'c4', 'c5'] as const;
 
-export function TrafficChart({ series, scope, loading }: { series: Series | null; scope: Scope; loading: boolean }) {
+interface Props {
+  series: Series | null;
+  scope: Scope;
+  loading: boolean;
+  onZoom: (range: { start: number; end: number }) => void;
+  onZoomReset?: () => void; // set while showing a range picked on the chart
+}
+
+export function TrafficChart({ series, scope, loading, onZoom, onZoomReset }: Props) {
   const [mode, setMode] = useState<'total' | 'status'>('status');
   const [hidden, setHidden] = useState<Record<string, boolean>>({});
   const [hover, setHover] = useState<number | null>(null);
+  const [drag, setDrag] = useState<{ a: number; b: number } | null>(null);
   const tz = scope.tz;
 
   const n = series?.c2.length ?? 0;
+
+  // Finish a drag-to-zoom wherever the mouse is released.
+  useEffect(() => {
+    if (!drag) return;
+    const up = () => {
+      const lo = Math.min(drag.a, drag.b), hi = Math.max(drag.a, drag.b);
+      setDrag(null);
+      if (hi > lo && series) onZoom({ start: series.start + lo * series.bucketMs, end: series.start + (hi + 1) * series.bucketMs });
+    };
+    window.addEventListener('mouseup', up);
+    return () => window.removeEventListener('mouseup', up);
+  }, [drag, series, onZoom]);
   const G = KEYS.map(k => series?.[k] ?? []);
   const TOT = G[0]!.map((_, i) => G[0]![i]! + G[1]![i]! + G[2]![i]! + G[3]![i]!);
   const ERR = G[0]!.map((_, i) => G[2]![i]! + G[3]![i]!);
@@ -109,6 +131,11 @@ export function TrafficChart({ series, scope, loading }: { series: Series | null
           <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Requests over time</h2>
           <div className="lbl num" style={{ marginTop: 2 }}>{series ? sub : ' '}</div>
         </div>
+        {onZoomReset && (
+          <button className="btn ghost" onClick={onZoomReset} style={{ marginLeft: 'auto', color: 'var(--accent-text)' }}>
+            <Icon name="close" />Reset zoom
+          </button>
+        )}
         <div className="seg" role="group" aria-label="Chart breakdown">
           {(['total', 'status'] as const).map(m => (
             <button key={m} className={mode === m ? 'on' : ''} aria-pressed={mode === m} onClick={() => { setMode(m); setHover(null); }}>
@@ -167,8 +194,22 @@ export function TrafficChart({ series, scope, loading }: { series: Series | null
                 </div>
               </>
             )}
-            <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
-              {TOT.map((_, i) => <div key={i} style={{ flex: 1, height: '100%' }} onMouseEnter={() => hover !== i && setHover(i)} />)}
+            {drag && (
+              <div className="brush" style={{ left: (Math.min(drag.a, drag.b) / n) * 100 + '%', width: ((Math.abs(drag.b - drag.a) + 1) / n) * 100 + '%' }} />
+            )}
+            <div
+              style={{ position: 'absolute', inset: 0, display: 'flex', cursor: n >= 2 ? 'crosshair' : undefined, userSelect: 'none' }}
+              onDoubleClick={() => onZoomReset?.()}
+              title={onZoomReset ? 'Drag to zoom · double-click to go back' : 'Drag to zoom into a time range'}
+            >
+              {TOT.map((_, i) => (
+                <div
+                  key={i}
+                  style={{ flex: 1, height: '100%' }}
+                  onMouseDown={e => { if (e.button === 0) { e.preventDefault(); setDrag({ a: i, b: i }); setHover(null); } }}
+                  onMouseEnter={() => (drag ? setDrag({ ...drag, b: i }) : hover !== i && setHover(i))}
+                />
+              ))}
             </div>
           </div>
           <div style={{ position: 'relative', height: 22, marginTop: 6 }} aria-hidden="true">

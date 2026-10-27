@@ -10,6 +10,8 @@ interface Props {
   onPickEndpoint: (e: EndpointStat, extra: Partial<Filters>) => void;
   onSlowest: (e: EndpointStat) => void;
   onPickIp: (ip: string) => void;
+  onZoom: (range: { start: number; end: number }) => void;
+  onZoomReset?: () => void;
 }
 
 // good: +1 when up is good, -1 when up is bad, 0 neutral.
@@ -19,7 +21,7 @@ function delta(v: number, good: number) {
   return { arrow: up ? '↑' : '↓', cls: 'delta ' + cls };
 }
 
-export function Overview({ scope, onPickDomain, onPickEndpoint, onSlowest, onPickIp }: Props) {
+export function Overview({ scope, onPickDomain, onPickEndpoint, onSlowest, onPickIp, onZoom, onZoomReset }: Props) {
   const { data, loading } = useQuery<OverviewData>(`/overview${qs(scopeParams(scope))}`, 'overview|' + scope.scopeKey);
   const busy = loading || !data;
   const t = data?.totals, p = data?.prev;
@@ -36,12 +38,24 @@ export function Overview({ scope, onPickDomain, onPickEndpoint, onSlowest, onPic
       ]
     : ['Total requests', 'Success rate', 'Avg response time', 'Error requests'].map(label => ({ label, hint: '', value: '', unit: '', d: '', prev: '', arrow: '', cls: '' }));
 
+  // Per-bucket trends for the KPI sparklines, in the same order as `kpis`.
+  const s = data?.series;
+  const tot = s ? s.c2.map((v, i) => v + s.c3[i]! + s.c4[i]! + s.c5[i]!) : [];
+  const trends: { values: (number | null)[]; bad?: boolean }[] = s
+    ? [
+        { values: tot },
+        { values: tot.map((n, i) => (n ? ((s.c2[i]! + s.c3[i]!) / n) * 100 : null)) },
+        { values: tot.map((n, i) => (n ? s.dur[i]! / n : null)) },
+        { values: tot.map((_, i) => s.c4[i]! + s.c5[i]!), bad: true },
+      ]
+    : [];
+
   const topMax = data?.topDomains[0]?.count || 1;
 
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(230px, 100%), 1fr))', gap: 12 }}>
-        {kpis.map(k => (
+        {kpis.map((k, ki) => (
           <section key={k.label} className="card" aria-label={k.label} style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 108 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
               <span style={{ fontSize: 12.5, color: 'var(--muted)', fontWeight: 500 }}>{k.label}</span>
@@ -54,9 +68,12 @@ export function Overview({ scope, onPickDomain, onPickEndpoint, onSlowest, onPic
               </>
             ) : (
               <>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                  <span className="num" style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{k.value}</span>
-                  <span style={{ fontSize: 13, color: 'var(--muted)' }}>{k.unit}</span>
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                    <span className="num" style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{k.value}</span>
+                    <span style={{ fontSize: 13, color: 'var(--muted)' }}>{k.unit}</span>
+                  </div>
+                  {trends[ki] && <Sparkline values={trends[ki].values} bad={trends[ki].bad} />}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <span className={k.cls}>{k.arrow} {k.d}</span>
@@ -68,7 +85,7 @@ export function Overview({ scope, onPickDomain, onPickEndpoint, onSlowest, onPic
         ))}
       </div>
 
-      <TrafficChart series={data?.series ?? null} scope={scope} loading={busy} />
+      <TrafficChart series={data?.series ?? null} scope={scope} loading={busy} onZoom={onZoom} onZoomReset={onZoomReset} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(270px, 100%), 1fr))', gap: 12 }}>
         <InsightCard title="Top domains" hint="Requests" empty={!busy && !data?.topDomains.length} emptyText="No traffic in this range." loading={busy}>
@@ -119,6 +136,30 @@ export function Overview({ scope, onPickDomain, onPickEndpoint, onSlowest, onPic
         </InsightCard>
       </div>
     </>
+  );
+}
+
+const SPARK_W = 96, SPARK_H = 28, SPARK_POINTS = 36;
+
+/** Tiny trend line; empty buckets (no requests) are skipped rather than drawn as zero. */
+function Sparkline({ values, bad }: { values: (number | null)[]; bad?: boolean }) {
+  const step = Math.max(1, Math.ceil(values.length / SPARK_POINTS));
+  const pts: (number | null)[] = [];
+  for (let i = 0; i < values.length; i += step) {
+    const chunk = values.slice(i, i + step).filter((v): v is number => v != null);
+    pts.push(chunk.length ? chunk.reduce((a, b) => a + b, 0) / chunk.length : null);
+  }
+  const known = pts.filter((v): v is number => v != null);
+  if (known.length < 2) return null;
+  const lo = Math.min(...known), hi = Math.max(...known), span = hi - lo || 1;
+  const xy = pts
+    .map((v, i) => (v == null ? null : `${((i / (pts.length - 1)) * SPARK_W).toFixed(1)},${(SPARK_H - 2 - ((v - lo) / span) * (SPARK_H - 4)).toFixed(1)}`))
+    .filter(Boolean)
+    .join(' ');
+  return (
+    <svg width={SPARK_W} height={SPARK_H} viewBox={`0 0 ${SPARK_W} ${SPARK_H}`} aria-hidden="true" style={{ flex: 'none', overflow: 'visible' }}>
+      <polyline points={xy} fill="none" stroke={bad ? 'var(--err)' : 'var(--accent)'} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" opacity={0.9} />
+    </svg>
   );
 }
 

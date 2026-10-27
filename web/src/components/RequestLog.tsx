@@ -22,6 +22,7 @@ interface Props {
   toggleLive: () => void;
   onViewAll: () => void;
   domainOptions: string[];
+  onRows?: (ids: number[]) => void; // ids of the rows on screen, for keyboard navigation
 }
 
 const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
@@ -88,6 +89,10 @@ export function RequestLog(p: Props) {
     return () => clearTimeout(t);
   }, [freshUntil]);
   const freshOn = Date.now() < freshUntil;
+
+  useEffect(() => {
+    if (data) p.onRows?.(data.rows.map(r => r.id));
+  }, [data]);
 
   const [path, setPath] = useDebounced(f.path, v => p.setF({ path: v }));
   const [ip, setIp] = useDebounced(f.ip, v => p.setF({ ip: v }));
@@ -174,7 +179,8 @@ export function RequestLog(p: Props) {
           <div className="fwrap" style={{ flex: '1 1 200px' }}>
             <Icon name="search" />
             <label className="sr" htmlFor="f-path">Search request path</label>
-            <input id="f-path" className="inp mono" type="text" placeholder="Search path, e.g. /api/users" value={path} onChange={e => setPath(e.target.value)} autoComplete="off" />
+            <input id="f-path" className="inp mono" type="text" placeholder="Search path, e.g. /api/users" value={path} onChange={e => setPath(e.target.value)} autoComplete="off" aria-keyshortcuts="/" style={{ paddingRight: 30 }} />
+            {!path && <span className="suffix kbd" aria-hidden="true">/</span>}
           </div>
           <div className="fwrap" style={{ flex: '0 1 170px' }}>
             <Icon name="ip" />

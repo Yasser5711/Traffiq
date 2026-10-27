@@ -6,6 +6,9 @@ import { Icon } from './Icon';
 
 interface Props {
   id: number;
+  position: { index: number; count: number } | null; // place in the visible table
+  onPrev?: () => void;
+  onNext?: () => void;
   tz: string;
   onClose: () => void;
   onByIp: (ip: string) => void;
@@ -13,7 +16,7 @@ interface Props {
   onByDomain: (domain: string) => void;
 }
 
-export function RequestDrawer({ id, tz, onClose, onByIp, onByPath, onByDomain }: Props) {
+export function RequestDrawer({ id, position, onPrev, onNext, tz, onClose, onByIp, onByPath, onByDomain }: Props) {
   const { data: e, error } = useQuery<RequestDetail>(`/requests/${id}`);
   const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -56,6 +59,17 @@ export function RequestDrawer({ id, tz, onClose, onByIp, onByPath, onByDomain }:
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {position && (
+              <>
+                <span className="lbl num" style={{ marginRight: 2 }}>{position.index + 1} / {position.count}</span>
+                <button className="btn icon ghost" aria-label="Previous request" title="Previous (↑ or k)" onClick={onPrev} disabled={!onPrev}>
+                  <Icon name="chevDown" style={{ transform: 'rotate(180deg)' }} />
+                </button>
+                <button className="btn icon ghost" aria-label="Next request" title="Next (↓ or j)" onClick={onNext} disabled={!onNext}>
+                  <Icon name="chevDown" />
+                </button>
+              </>
+            )}
             <span className="kbd" aria-hidden="true">Esc</span>
             <button ref={closeRef} className="btn icon ghost" aria-label="Close" onClick={onClose}>
               <Icon name="close" />

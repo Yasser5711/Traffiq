@@ -62,11 +62,11 @@ export function MapPage({ scope, geoStatus, onCountry }: Props) {
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Where requests come from</h2>
-            <div className="lbl" style={{ marginTop: 2 }}>{RANGE_LABEL[scope.rangeKey]} · bubble size = requests · red = 25%+ errors · click to filter</div>
+            <div className="lbl" style={{ marginTop: 2 }}>{RANGE_LABEL[scope.rangeKey]} · bubble size = requests · red = 25%+ errors · drag, pinch or Ctrl + scroll to zoom · click to filter</div>
           </div>
         </div>
         <div style={{ position: 'relative', opacity: loading ? 0.3 : 1, transition: 'opacity .2s' }}>
-          <WorldMap points={data?.points ?? []} onPick={p => onCountry(p.country)} />
+          <WorldMap points={data?.points ?? []} countries={data?.countries ?? []} onPick={onCountry} />
         </div>
         <div className="lbl" style={{ fontSize: 11, textAlign: 'right', marginTop: 4 }}>
           <a href="https://db-ip.com" target="_blank" rel="noreferrer">IP Geolocation by DB-IP</a>
@@ -81,7 +81,7 @@ export function MapPage({ scope, geoStatus, onCountry }: Props) {
               <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                   <span className="ell" style={{ fontSize: 12.5 }}>{c.name}</span>
-                  <span className="mono" style={{ fontSize: 12.5 }}>{fmtInt(c.count)}</span>
+                  <span className="mono" style={{ fontSize: 12.5 }}>{fmtInt(c.count)} <span className={errCls(c)} style={{ fontSize: 11.5 }}>· {errPct(c)}</span></span>
                 </div>
                 <div className="bar"><span style={{ width: (c.count / cMax) * 100 + '%' }} /></div>
               </div>
@@ -95,7 +95,7 @@ export function MapPage({ scope, geoStatus, onCountry }: Props) {
               <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                   <span className="ell" style={{ fontSize: 12.5 }}>{c.city || 'Unknown city'}</span>
-                  <span className="mono" style={{ fontSize: 12.5 }}>{fmtInt(c.count)}</span>
+                  <span className="mono" style={{ fontSize: 12.5 }}>{fmtInt(c.count)} <span className={errCls(c)} style={{ fontSize: 11.5 }}>· {errPct(c)}</span></span>
                 </div>
                 <div className="bar"><span style={{ width: (c.count / ciMax) * 100 + '%' }} /></div>
               </div>
@@ -127,3 +127,6 @@ function ListCard({ title, children, empty }: { title: string; children: React.R
     </section>
   );
 }
+
+const errPct = (c: { count: number; errors: number }) => (c.count ? (c.errors / c.count) * 100 : 0).toFixed(1) + '% err';
+const errCls = (c: { count: number; errors: number }) => (c.count && c.errors / c.count >= 0.25 ? 'badmsg' : 'lbl');

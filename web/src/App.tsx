@@ -4,6 +4,7 @@ import { qs, useQuery } from './lib/api';
 import { DUR_MIN, EMPTY_FILTERS, type Filters, type Page, type Scope, type Sort } from './lib/ctx';
 import { ago, fmtHMS } from './lib/format';
 import { ACCENTS, useDark, usePrefs, type RangeKey } from './lib/prefs';
+import { readView, viewHash } from './lib/url';
 import { Sidebar } from './components/Sidebar';
 import { HeaderControls } from './components/HeaderControls';
 import { Icon } from './components/Icon';
@@ -16,13 +17,7 @@ import { Domains } from './pages/Domains';
 const MapPage = lazy(() => import('./pages/Map').then(m => ({ default: m.MapPage })));
 import { Settings } from './pages/Settings';
 
-const PAGES: Page[] = ['overview', 'requests', 'map', 'domains', 'settings'];
 const TITLES: Record<Page, string> = { overview: 'Traffic Overview', requests: 'Requests', map: 'Map', domains: 'Domains', settings: 'Settings' };
-
-function pageFromHash(): Page {
-  const p = location.hash.replace(/^#\/?/, '') as Page;
-  return PAGES.includes(p) ? p : 'overview';
-}
 
 function useNow(ms: number) {
   const [now, setNow] = useState(Date.now());
@@ -39,22 +34,20 @@ export function App({ authEnabled, onLogout }: { authEnabled: boolean; onLogout:
   const ac = ACCENTS[prefs.accent];
   const now = useNow(1000);
 
-  const [page, setPage] = useState<Page>(pageFromHash);
-  useEffect(() => {
-    const on = () => setPage(pageFromHash());
-    window.addEventListener('hashchange', on);
-    return () => window.removeEventListener('hashchange', on);
-  }, []);
+  // The view (page, range, domains, filters, sort) starts from the URL and is written back to it.
+  const initial = useMemo(() => readView(prefs.defRange), []);
+  const [page, setPage] = useState<Page>(initial.page);
   const go = (p: Page) => {
-    location.hash = '/' + p;
     setPage(p);
     setSel(null);
   };
 
   // Scope: time range + domain selection.
-  const [range, setRange] = useState<RangeKey | 'custom'>(prefs.defRange);
-  const [custom, setCustom] = useState<{ start: number; end: number } | null>(null);
-  const [domainSel, setDomainSel] = useState<string[]>([]);
+  const [range, setRange] = useState<RangeKey | 'custom'>(initial.range);
+  const [custom, setCustom] = useState<{ start: number; end: number } | null>(initial.custom);
+  const [domainSel, setDomainSel] = useState<string[]>(initial.domains);
+  // The range shown before zooming into the chart, so "Reset zoom" can go back to it.
+  const [zoomFrom, setZoomFrom] = useState<{ range: RangeKey | 'custom'; custom: { start: number; end: number } | null } | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [anchor, setAnchor] = useState(Date.now());
   const [updatedAt, setUpdatedAt] = useState(Date.now());
@@ -66,10 +59,65 @@ export function App({ authEnabled, onLogout }: { authEnabled: boolean; onLogout:
   const liveRef = useRef(live);
   liveRef.current = live;
 
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [sort, setSort] = useState<Sort>({ key: 'ts', dir: 'desc' });
+  const [filters, setFilters] = useState<Filters>(initial.filters);
+  const [sort, setSort] = useState<Sort>(initial.sort);
+
+  // A page change adds a history entry (Back works); other view changes replace it.
+  const lastPage = useRef(page);
+  useEffect(() => {
+    const hash = viewHash({ page, range, custom, domains: domainSel, filters, sort }, prefs.defRange);
+    if (hash === location.hash) return;
+    if (lastPage.current !== page) history.pushState(null, '', hash);
+    else history.replaceState(null, '', hash);
+    lastPage.current = page;
+  }, [page, range, custom, domainSel, filters, sort, prefs.defRange]);
+
+  useEffect(() => {
+    const on = () => {
+      const v = readView(prefs.defRange);
+      lastPage.current = v.page;
+      setPage(v.page);
+      setRange(v.range);
+      setCustom(v.custom);
+      setDomainSel(v.domains);
+      setFilters(v.filters);
+      setSort(v.sort);
+      setPg(0);
+      setSel(null);
+    };
+    window.addEventListener('popstate', on);
+    return () => window.removeEventListener('popstate', on);
+  }, [prefs.defRange]);
   const [pg, setPg] = useState(0);
   const [sel, setSel] = useState<number | null>(null);
+  const [rowIds, setRowIds] = useState<number[]>([]);
+  const selIdx = sel == null ? -1 : rowIds.indexOf(sel);
+
+  // Keyboard: "/" searches the request log; ↑/↓ or j/k step through requests in the drawer.
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      if (e.metaKey || e.ctrlKey || e.altKey || el.closest('input, textarea, select, [contenteditable]')) return;
+      if (e.key === '/') {
+        const search = document.getElementById('f-path') as HTMLInputElement | null;
+        if (search) {
+          e.preventDefault();
+          search.focus();
+          search.select();
+        }
+        return;
+      }
+      if (sel == null || selIdx < 0) return;
+      const step = e.key === 'ArrowDown' || e.key === 'j' ? 1 : e.key === 'ArrowUp' || e.key === 'k' ? -1 : 0;
+      const next = rowIds[selIdx + step];
+      if (step && next != null) {
+        e.preventDefault();
+        setSel(next);
+      }
+    };
+    window.addEventListener('keydown', on);
+    return () => window.removeEventListener('keydown', on);
+  }, [sel, selIdx, rowIds]);
 
   // Server status + stream.
   const status = useQuery<Status>(`/status?t=${Math.floor(now / 10000)}`, 'status');
@@ -174,6 +222,7 @@ export function App({ authEnabled, onLogout }: { authEnabled: boolean; onLogout:
     scope, filters, setF, sort, setSort: (s: Sort) => { setSort(s); setPg(0); }, pg, setPg, sel, onOpen: setSel, live, pending, toggleLive,
     clearFilters: () => { setFilters(EMPTY_FILTERS); setPg(0); },
     domainOptions: (domainList.data ?? []).map(d => d.domain),
+    onRows: setRowIds,
   };
 
   return (
@@ -195,8 +244,8 @@ export function App({ authEnabled, onLogout }: { authEnabled: boolean; onLogout:
               setDomainSel={d => { setDomainSel(d); setPg(0); }}
               range={range}
               custom={isCustom ? custom : null}
-              setRange={r => { setRange(r); setCustom(null); setPg(0); refresh(); }}
-              setCustom={c => { setCustom(c); setRange('custom'); setPg(0); }}
+              setRange={r => { setRange(r); setCustom(null); setZoomFrom(null); setPg(0); refresh(); }}
+              setCustom={c => { setCustom(c); setZoomFrom(null); setRange('custom'); setPg(0); }}
               autoRefresh={autoRefresh}
               setAutoRefresh={setAutoRefresh}
               interval={prefs.interval}
@@ -230,6 +279,13 @@ export function App({ authEnabled, onLogout }: { authEnabled: boolean; onLogout:
               onPickEndpoint={(e, extra) => setF({ path: e.route.split(':')[0], domain: e.domain, ...extra })}
               onSlowest={e => { setF({ path: e.route.split(':')[0], domain: e.domain, status: 'all' }); setSort({ key: 'dur', dir: 'desc' }); }}
               onPickIp={ip => setF({ ip })}
+              onZoom={c => {
+                if (!zoomFrom) setZoomFrom({ range, custom });
+                setCustom(c);
+                setRange('custom');
+                setPg(0);
+              }}
+              onZoomReset={zoomFrom ? () => { setRange(zoomFrom.range); setCustom(zoomFrom.custom); setZoomFrom(null); setPg(0); refresh(); } : undefined}
             />
           )}
           {(page === 'overview' || page === 'requests') && <RequestLog {...logProps} mode={page} onViewAll={() => go('requests')} />}
@@ -250,6 +306,9 @@ export function App({ authEnabled, onLogout }: { authEnabled: boolean; onLogout:
       {sel != null && (
         <RequestDrawer
           id={sel}
+          position={selIdx >= 0 ? { index: selIdx, count: rowIds.length } : null}
+          onPrev={selIdx > 0 ? () => setSel(rowIds[selIdx - 1]!) : undefined}
+          onNext={selIdx >= 0 && selIdx < rowIds.length - 1 ? () => setSel(rowIds[selIdx + 1]!) : undefined}
           tz={prefs.tz}
           onClose={() => setSel(null)}
           onByIp={ip => { setSel(null); setFilters({ ...EMPTY_FILTERS, ip }); setPg(0); go('requests'); }}

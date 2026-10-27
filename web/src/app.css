@@ -4,6 +4,14 @@ html, body, #root { min-height: 100% }
 .tl a { color: var(--accent-text) }
 .btn.danger { color: var(--err) }
 
+/* Map controls and the "Ctrl + scroll" hint */
+.mapctl { position: absolute; top: 8px; right: 8px; display: flex; flex-direction: column; gap: 4px }
+.mapctl .btn { background: color-mix(in srgb, var(--panel) 88%, transparent) }
+.maphint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; background: color-mix(in srgb, var(--bg) 55%, transparent); font-weight: 500; animation: fade .15s ease-out }
+
+/* Drag-to-zoom selection on the traffic chart */
+.brush { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--accent) 16%, transparent); border-left: 1px solid var(--accent); border-right: 1px solid var(--accent); pointer-events: none }
+
 /* Brand mark (the PNG has its own dark tile) */
 .logo-mark { display: block; flex: none; border-radius: 7px; box-shadow: 0 0 0 1px var(--border) }
 

@@ -95,19 +95,19 @@ function grid(scope: Scope): Grid {
 
 function emptySeries(g: Grid): Series {
   const z = () => new Array<number>(g.n).fill(0);
-  return { bucketMs: g.bucketMs, start: g.start, c2: z(), c3: z(), c4: z(), c5: z() };
+  return { bucketMs: g.bucketMs, start: g.start, c2: z(), c3: z(), c4: z(), c5: z(), dur: z() };
 }
 
 /** Time series per domain (or a single '*' series when byDomain is false). */
 function series(scope: Scope, byDomain: boolean): { grid: Grid; data: Map<string, Series> } {
   const g = grid(scope);
   const end = g.start + g.n * g.bucketMs;
-  let rows: { domain: string; i: number; c2: unknown; c3: unknown; c4: unknown; c5: unknown }[];
+  let rows: { domain: string; i: number; c2: unknown; c3: unknown; c4: unknown; c5: unknown; dur: unknown }[];
   if (g.bucketMs < MIN) {
     const i = sql<number>`(${requests.ts} - ${g.start}) / ${g.bucketMs}`;
     const domain = byDomain ? requests.domain : sql<string>`'*'`;
     rows = db
-      .select({ domain, i, c2, c3, c4, c5 })
+      .select({ domain, i, c2, c3, c4, c5, dur: sum(requests.dur) })
       .from(requests)
       .where(rawWhere({ ...scope, start: g.start, end }))
       .groupBy(domain, i)
@@ -116,7 +116,7 @@ function series(scope: Scope, byDomain: boolean): { grid: Grid; data: Map<string
     const i = sql<number>`(${minuteStats.minute} - ${g.start}) / ${g.bucketMs}`;
     const domain = byDomain ? minuteStats.domain : sql<string>`'*'`;
     rows = db
-      .select({ domain, i, c2: sum(minuteStats.c2), c3: sum(minuteStats.c3), c4: sum(minuteStats.c4), c5: sum(minuteStats.c5) })
+      .select({ domain, i, c2: sum(minuteStats.c2), c3: sum(minuteStats.c3), c4: sum(minuteStats.c4), c5: sum(minuteStats.c5), dur: sum(minuteStats.durSum) })
       .from(minuteStats)
       .where(rollupWhere(g.start, end, scope.domains))
       .groupBy(domain, i)
@@ -132,6 +132,7 @@ function series(scope: Scope, byDomain: boolean): { grid: Grid; data: Map<string
     s.c3[i] = Number(r.c3);
     s.c4[i] = Number(r.c4);
     s.c5[i] = Number(r.c5);
+    s.dur[i] = Number(r.dur ?? 0);
   }
   return { grid: g, data };
 }
