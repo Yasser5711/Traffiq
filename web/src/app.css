@@ -1,0 +1,22 @@
+/* Additions on top of design.css (the TrafficLens design export). */
+body:has(.tl.light) { background: #FAFAFA }
+html, body, #root { min-height: 100% }
+.tl a { color: var(--accent-text) }
+.btn.danger { color: var(--err) }
+
+/* Keep navigation and connection status in view while scrolling long pages. */
+@media (min-width: 761px) { .side { position: sticky; top: 0; height: 100vh; overflow-y: auto } }
+
+/* Login */
+.login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px }
+.login form { width: min(360px, 100%); padding: 24px; display: flex; flex-direction: column; gap: 14px }
+.login .inp { width: 100%; height: 36px }
+.login .btn.primary { height: 36px; justify-content: center }
+
+/* Keyboard hint shown in the drawer header */
+.kbd { font-family: 'Geist Mono Variable', ui-monospace, monospace; font-size: 11px; color: var(--faint); border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; height: 18px; display: inline-flex; align-items: center }
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .tl *, .tl *::before, .tl *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important }
+}
