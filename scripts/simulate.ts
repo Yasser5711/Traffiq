@@ -76,10 +76,16 @@ const DOMAINS: Domain[] = [
   },
 ];
 
+// Visitors: well-known public resolver/infrastructure addresses, so GeoIP has something
+// to place on the map in development. Weighted like a mostly-European audience.
 const IPS: [string, number][] = [
-  ['192.0.2.15', 10], ['198.51.100.24', 6], ['203.0.113.12', 5], ['192.0.2.35', 4], ['198.51.100.7', 4], ['192.0.2.88', 3],
-  ['203.0.113.45', 3], ['198.51.100.142', 3], ['192.0.2.201', 2], ['203.0.113.190', 2], ['2001:db8::1f', 2], ['203.0.113.9', 2],
+  ['80.67.169.12', 10], ['185.222.222.222', 6], ['80.80.80.80', 5], ['94.140.14.14', 4], ['8.8.8.8', 5], ['9.9.9.9', 3],
+  ['208.67.222.222', 3], ['156.154.70.1', 2], ['77.88.8.8', 2], ['114.114.114.114', 2], ['180.76.76.76', 1], ['168.126.63.1', 2],
+  ['101.101.101.101', 1], ['1.1.1.1', 2], ['200.221.11.100', 1], ['2620:fe::fe', 1],
 ];
+// Most traffic reaches Traefik through a Cloudflare tunnel container: Traefik's peer is the
+// tunnel, the visitor is in Cf-Connecting-Ip / X-Forwarded-For.
+const TUNNEL_PEER = '172.20.1.52';
 
 const rnd = Math.random;
 const pick = <T>(a: T[]): T => a[Math.floor(rnd() * a.length)]!;
@@ -124,11 +130,14 @@ function line(t: number): string {
   const size = code === 304 || code === 204 ? 0 : g === 1 ? 150 + rnd() * 90 : g === 2 ? 110 + rnd() * 480 : g === 3 ? 700 + rnd() * 900 : route.size * (0.7 + 0.6 * rnd());
   const ua = pick(route.ua ?? (d.name.startsWith('api') ? UA_API : UA_WEB));
   const ip = route.ua === UA_SCAN ? '203.0.113.77' : pickW(IPS, x => x[1])[0];
+  const tunneled = rnd() < 0.7;
+  const peer = tunneled ? TUNNEL_PEER : ip;
   const durNs = Math.round(dur * 1e6);
   const overheadNs = Math.min(durNs, Math.round((0.3 + rnd() * 3) * 1e6));
   return JSON.stringify({
-    ClientAddr: `${ip}:${40000 + Math.floor(rnd() * 20000)}`,
-    ClientHost: ip,
+    ClientAddr: `${peer}:${40000 + Math.floor(rnd() * 20000)}`,
+    ClientHost: peer,
+    ...(tunneled ? { 'request_Cf-Connecting-Ip': ip, 'request_X-Forwarded-For': ip } : {}),
     DownstreamContentSize: Math.round(size),
     DownstreamStatus: code,
     Duration: durNs,

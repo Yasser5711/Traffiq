@@ -86,6 +86,21 @@ export function Settings({ prefs, setPrefs, status, conn, reloadStatus }: Props)
           <span className="mono" style={{ fontSize: 12.5 }}>{status ? fmtInt(status.linesTotal) : '…'}</span>,
         )}
         {row(
+          <span style={{ fontWeight: 500 }}>IP geolocation</span>,
+          'DB-IP City Lite, stored on this server and refreshed monthly. Lookups never leave the VPS.',
+          <span className={!status ? 'mono' : status.geo.loaded ? 'okmsg' : status.geo.error && !status.geo.downloading ? 'badmsg' : 'lbl'} style={{ fontSize: 12.5 }}>
+            {!status
+              ? '…'
+              : !status.geo.enabled
+                ? 'Off'
+                : status.geo.loaded
+                  ? `Ready${status.geo.builtAt ? ' · built ' + new Date(status.geo.builtAt).toISOString().slice(0, 10) : ''}`
+                  : status.geo.downloading
+                    ? 'Downloading…'
+                    : status.geo.error ?? 'Loading…'}
+          </span>,
+        )}
+        {row(
           <span style={{ fontWeight: 500 }}>Test connection</span>,
           'Checks that the log file is readable and new lines are arriving.',
           <button className="btn" onClick={runTest} disabled={testing}>

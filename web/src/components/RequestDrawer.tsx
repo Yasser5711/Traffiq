@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { RequestDetail } from '../../../shared/types';
 import { useQuery } from '../lib/api';
-import { durCls, fmtDM, fmtDur, fmtHMS, fmtInt, fmtSize, fmtYear, methodCls, STATUS_TEXT, statusCls } from '../lib/format';
+import { durCls, flag, fmtDM, fmtDur, fmtHMS, fmtInt, fmtSize, fmtYear, methodCls, STATUS_TEXT, statusCls } from '../lib/format';
 import { Icon } from './Icon';
 
 interface Props {
@@ -104,6 +104,8 @@ export function RequestDrawer({ id, tz, onClose, onByIp, onByPath, onByDomain }:
                   ['Query string', q >= 0 ? e.path.slice(q) : '—'],
                   ['Protocol', dash(e.proto)],
                   ['Client IP', e.ip],
+                  ['Location', e.country ? `${flag(e.country)} ${[e.city, e.countryName].filter(Boolean).join(', ')}` : e.country === '' ? 'Unknown (private or unlisted address)' : '—'],
+                  ...(e.peer && e.peer !== e.ip ? ([['Proxy peer', e.peer]] as [string, string][]) : []),
                   ['User agent', dash(e.ua)],
                 ])}
               </div>

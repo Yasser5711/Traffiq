@@ -10,7 +10,8 @@ export interface ParsedRequest {
   status: number;
   dur: number;
   size: number;
-  ip: string;
+  ip: string; // visitor address (from proxy headers when available)
+  peer: string; // address Traefik saw the connection from
   ua: string;
   proto: string;
   scheme: string;
@@ -65,6 +66,44 @@ function upstreamOf(v: unknown): string {
   return '';
 }
 
+const PRIVATE_V4 = /^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|0\.)/;
+
+/** Loopback, private, CGNAT (Tailscale) and link-local addresses. */
+export function isPrivateIp(ip: string): boolean {
+  if (!ip) return true;
+  if (ip.includes(':')) {
+    const v = ip.toLowerCase();
+    if (v.startsWith('::ffff:')) return isPrivateIp(v.slice(7));
+    return v === '::1' || v.startsWith('fc') || v.startsWith('fd') || v.startsWith('fe80');
+  }
+  return PRIVATE_V4.test(ip);
+}
+
+/** Case-insensitive lookup of a request header kept in the access log ("request_<Name>"). */
+function header(o: Record<string, unknown>, name: string): string {
+  const want = 'request_' + name.toLowerCase();
+  for (const k in o) if (k.length === want.length && k.toLowerCase() === want) return str(o[k]);
+  return '';
+}
+
+/**
+ * The visitor's address. Behind Cloudflare or a tunnel, Traefik's peer is the proxy, so
+ * prefer the forwarding headers when Traefik is configured to keep them in the log.
+ */
+function realIp(o: Record<string, unknown>, peer: string): string {
+  const cf = header(o, 'Cf-Connecting-Ip').trim();
+  if (cf) return cf;
+  const xff = header(o, 'X-Forwarded-For');
+  if (xff) {
+    const hops = xff.split(',').map(s => s.trim()).filter(Boolean);
+    const pub = hops.find(h => !isPrivateIp(h));
+    if (pub) return pub;
+  }
+  const xr = header(o, 'X-Real-Ip').trim();
+  if (xr && !isPrivateIp(xr)) return xr;
+  return peer;
+}
+
 function serviceName(s: string): string {
   // "my-app-service@docker" -> "my-app-service"
   return s.replace(/@[a-z]+$/i, '');
@@ -89,6 +128,7 @@ export function parseLine(line: string): ParsedRequest | null {
   const path = str(o.RequestPath) || '/';
   const host = hostOnly(str(o.RequestHost) || str(o.RequestAddr));
   const service = str(o.ServiceName);
+  const peer = str(o.ClientHost) || hostOnly(str(o.ClientAddr));
 
   return {
     ts,
@@ -99,8 +139,9 @@ export function parseLine(line: string): ParsedRequest | null {
     status,
     dur: num(o.Duration) / NS_PER_MS,
     size: Math.round(num(o.DownstreamContentSize)),
-    ip: str(o.ClientHost) || hostOnly(str(o.ClientAddr)),
-    ua: str(o['request_User-Agent']),
+    ip: realIp(o, peer),
+    peer,
+    ua: header(o, 'User-Agent'),
     proto: str(o.RequestProtocol),
     scheme: str(o.RequestScheme),
     router: str(o.RouterName),
@@ -109,6 +150,6 @@ export function parseLine(line: string): ParsedRequest | null {
     entrypoint: str(o.entryPointName),
     overhead: num(o.Overhead) / NS_PER_MS,
     origin: num(o.OriginDuration) / NS_PER_MS,
-    reqId: str(o['request_X-Request-Id']) || str(o['downstream_X-Request-Id']),
+    reqId: header(o, 'X-Request-Id') || str(o['downstream_X-Request-Id']),
   };
 }

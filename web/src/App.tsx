@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { ConnState, Status } from '../../shared/types';
 import { qs, useQuery } from './lib/api';
 import { DUR_MIN, EMPTY_FILTERS, type Filters, type Page, type Scope, type Sort } from './lib/ctx';
@@ -11,10 +11,13 @@ import { RequestDrawer } from './components/RequestDrawer';
 import { RequestLog } from './components/RequestLog';
 import { Overview } from './pages/Overview';
 import { Domains } from './pages/Domains';
+
+// The map pulls in world geometry and d3-geo: load it only when the Map page opens.
+const MapPage = lazy(() => import('./pages/Map').then(m => ({ default: m.MapPage })));
 import { Settings } from './pages/Settings';
 
-const PAGES: Page[] = ['overview', 'requests', 'domains', 'settings'];
-const TITLES: Record<Page, string> = { overview: 'Traffic Overview', requests: 'Requests', domains: 'Domains', settings: 'Settings' };
+const PAGES: Page[] = ['overview', 'requests', 'map', 'domains', 'settings'];
+const TITLES: Record<Page, string> = { overview: 'Traffic Overview', requests: 'Requests', map: 'Map', domains: 'Domains', settings: 'Settings' };
 
 function pageFromHash(): Page {
   const p = location.hash.replace(/^#\/?/, '') as Page;
@@ -230,7 +233,16 @@ export function App({ authEnabled, onLogout }: { authEnabled: boolean; onLogout:
             />
           )}
           {(page === 'overview' || page === 'requests') && <RequestLog {...logProps} mode={page} onViewAll={() => go('requests')} />}
-          {page === 'domains' && <Domains scope={scope} onOpen={d => { setDomainSel([d]); setFilters(EMPTY_FILTERS); go('requests'); }} />}
+          {page === 'map' && (
+            <Suspense fallback={<span className="skel" style={{ height: 480, borderRadius: 10 }} />}>
+              <MapPage
+                scope={scope}
+                geoStatus={status.data?.geo}
+                onCountry={country => { setFilters({ ...EMPTY_FILTERS, country }); setPg(0); go('requests'); }}
+              />
+            </Suspense>
+          )}
+          {page === 'domains' &&<Domains scope={scope} onOpen={d => { setDomainSel([d]); setFilters(EMPTY_FILTERS); go('requests'); }} />}
           {page === 'settings' && <Settings prefs={prefs} setPrefs={setPrefs} status={status.data} conn={conn} reloadStatus={status.reload} />}
         </div>
       </main>

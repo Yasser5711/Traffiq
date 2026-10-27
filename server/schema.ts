@@ -23,8 +23,15 @@ export const requests = sqliteTable(
     overhead: real('overhead').notNull().default(0),
     origin: real('origin').notNull().default(0),
     reqId: text('req_id').notNull().default(''),
+    peer: text('peer').notNull().default(''),
+    // GeoIP of `ip`: null = not looked up yet, '' = unknown (private address, no match).
+    country: text('country'),
+    countryName: text('country_name'),
+    city: text('city'),
+    lat: real('lat'),
+    lon: real('lon'),
   },
-  t => [index('ix_requests_ts').on(t.ts), index('ix_requests_domain_ts').on(t.domain, t.ts)],
+  t => [index('ix_requests_ts').on(t.ts), index('ix_requests_domain_ts').on(t.domain, t.ts), index('ix_requests_country_ts').on(t.country, t.ts)],
 );
 
 // Per-minute rollup used for charts and KPIs over long ranges.

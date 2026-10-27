@@ -4,8 +4,9 @@ import { streamSSE } from 'hono/streaming';
 import { existsSync } from 'node:fs';
 import { config, RETENTIONS } from './config';
 import { setSetting, setting } from './db';
-import { connState, onIngest, prune, startCollector, state, testConnection } from './collector';
-import { domainList, domainStats, overview, requestById, requestLog, type RequestQuery, type Scope } from './stats';
+import { backfillGeo, connState, onIngest, prune, startCollector, state, testConnection } from './collector';
+import { geoState, initGeo } from './geo';
+import { domainList, domainStats, geo, overview, requestById, requestLog, type RequestQuery, type Scope } from './stats';
 import { isAuthed, login, logout, requireAuth } from './auth';
 import type { Status } from '../shared/types';
 
@@ -58,6 +59,7 @@ api.get('/status', c => {
     retention: setting('retention', '14d'),
     authEnabled: !!config.password,
     version: config.version,
+    geo: { ...geoState },
   };
   return c.json(s);
 });
@@ -78,6 +80,8 @@ api.get('/overview', c => c.json(overview(scopeOf(k => c.req.query(k)))));
 
 api.get('/domains', c => c.json(domainStats(scopeOf(k => c.req.query(k)))));
 
+api.get('/geo', c => c.json(geo(scopeOf(k => c.req.query(k)))));
+
 api.get('/domain-list', c => c.json(domainList(scopeOf(k => c.req.query(k)))));
 
 api.get('/requests', c => {
@@ -90,6 +94,7 @@ api.get('/requests', c => {
     status: q('status') || undefined,
     path: q('path') || undefined,
     ip: q('ip') || undefined,
+    country: q('country') || undefined,
     minDur: Number(q('minDur')) || undefined,
     sort: ['ts', 'domain', 'status', 'dur', 'ip', 'size'].includes(sort) ? sort : 'ts',
     dir: q('dir') === 'asc' ? 'asc' : 'desc',
@@ -137,6 +142,7 @@ if (existsSync(config.staticDir)) {
 }
 
 startCollector();
+initGeo(() => backfillGeo());
 
 const server = Bun.serve({ port: config.port, fetch: app.fetch, idleTimeout: 0 });
 console.log(`[traffiq] listening on http://localhost:${server.port}`);

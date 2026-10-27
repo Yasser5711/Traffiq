@@ -6,6 +6,7 @@ import { Icon, type IconName } from './Icon';
 const NAV: [Page, string, IconName][] = [
   ['overview', 'Overview', 'overview'],
   ['requests', 'Requests', 'requests'],
+  ['map', 'Map', 'map'],
   ['domains', 'Domains', 'globe'],
   ['settings', 'Settings', 'settings'],
 ];

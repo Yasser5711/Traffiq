@@ -1,6 +1,6 @@
 import type { RangeKey } from './prefs';
 
-export type Page = 'overview' | 'requests' | 'domains' | 'settings';
+export type Page = 'overview' | 'requests' | 'map' | 'domains' | 'settings';
 
 export interface Filters {
   domain: string;
@@ -9,9 +9,10 @@ export interface Filters {
   path: string;
   ip: string;
   minDur: string;
+  country: string; // ISO code, '-' = unknown location, '' = any
 }
 
-export const EMPTY_FILTERS: Filters = { domain: 'all', method: 'all', status: 'all', path: '', ip: '', minDur: '' };
+export const EMPTY_FILTERS: Filters = { domain: 'all', method: 'all', status: 'all', path: '', ip: '', minDur: '', country: '' };
 
 export type SortKey = 'ts' | 'domain' | 'status' | 'dur' | 'ip' | 'size';
 export interface Sort {

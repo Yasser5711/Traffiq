@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { RequestPage } from '../../../shared/types';
 import { qs, useQuery } from '../lib/api';
 import { EMPTY_FILTERS, type Filters, type Scope, type Sort, type SortKey } from '../lib/ctx';
-import { durCls, fmtDM, fmtDur, fmtHMS, fmtInt, fmtSize, methodCls, STATUS_TEXT, statusCls } from '../lib/format';
+import { durCls, flag, fmtDM, fmtDur, fmtHMS, fmtInt, fmtSize, methodCls, STATUS_TEXT, statusCls } from '../lib/format';
 import { Icon } from './Icon';
 
 interface Props {
@@ -59,6 +59,7 @@ export function RequestLog(p: Props) {
     status: f.status !== 'all' && f.status,
     path: f.path.trim(),
     ip: f.ip.trim(),
+    country: f.country,
     minDur: f.minDur,
     sort: sort.key,
     dir: sort.dir,
@@ -186,6 +187,12 @@ export function RequestLog(p: Props) {
             <input id="f-dur" className="inp mono" type="number" min={0} step={50} placeholder="Min duration" value={minDur} onChange={e => setMinDur(e.target.value)} style={{ paddingRight: 32 }} />
             <span className="suffix">ms</span>
           </div>
+          {f.country && (
+            <button className="chip on" onClick={() => p.setF({ country: '' })} aria-label="Remove country filter" title="Remove country filter">
+              <span>{f.country === '-' ? 'Unknown location' : `${flag(f.country)} ${f.country}`}</span>
+              <Icon name="close" style={{ width: 13, height: 13 }} />
+            </button>
+          )}
           {filtersActive && (
             <button className="btn ghost" onClick={p.clearFilters}>
               <Icon name="close" />Clear filters
@@ -229,7 +236,10 @@ export function RequestLog(p: Props) {
                   <div role="cell"><span className="pathbtn mono" title={r.path}>{r.path}</span></div>
                   <div role="cell"><span className={statusCls(r.status)}>{r.status}</span></div>
                   <div role="cell" className="mono r"><span className={durCls(r.dur)}>{fmtDur(r.dur)}</span></div>
-                  <div role="cell" className="mono"><span className="ell">{r.ip}</span></div>
+                  <div role="cell" className="mono" style={{ gap: 6 }}>
+                    {r.country && <span aria-label={r.country} title={r.country}>{flag(r.country)}</span>}
+                    <span className="ell">{r.ip}</span>
+                  </div>
                   <div role="cell" className="mono r" style={{ color: 'var(--muted)' }}>{fmtSize(r.size)}</div>
                 </div>
               ))}

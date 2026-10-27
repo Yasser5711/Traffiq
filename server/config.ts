@@ -27,6 +27,11 @@ export const config = {
   // Hosts never recorded (e.g. the dashboard's own domain).
   ignoreHosts: (env.IGNORE_HOSTS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
   staticDir: env.STATIC_DIR || './dist',
+  geoip: {
+    enabled: env.GEOIP !== 'false',
+    path: env.GEOIP_PATH || (isProd ? '/data/geo/dbip-city-lite.mmdb' : './data/geo/dbip-city-lite.mmdb'),
+    autoDownload: env.GEOIP_AUTO_DOWNLOAD !== 'false',
+  },
   version: '0.1.0',
 };
 

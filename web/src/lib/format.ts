@@ -1,3 +1,9 @@
+/** Emoji flag for an ISO 3166-1 alpha-2 code ("FR" → 🇫🇷). */
+export function flag(code: string | null | undefined) {
+  if (!code || !/^[A-Za-z]{2}$/.test(code)) return '';
+  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1f1e6 + c.charCodeAt(0) - 65));
+}
+
 export const fmtInt = (v: number) => Math.round(v).toLocaleString('en-US');
 
 export function fmtCompact(v: number) {

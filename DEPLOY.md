@@ -17,11 +17,16 @@ accessLog:
   bufferingSize: 100
 ```
 
-### Optionnel : User-Agent et Request ID
+### Recommandé : vraie IP des visiteurs, User-Agent, Request ID
 
-Par défaut, Traefik n'écrit pas les en-têtes HTTP dans le log, donc le champ
-« User agent » du détail d'une requête reste vide. Pour les ajouter, édite
-`traefik.yml` (Web Server → Traefik → **Modify**) et complète le bloc `accessLog` :
+Par défaut, Traefik n'écrit aucun en-tête HTTP dans le log. Deux conséquences :
+
+- le champ « User agent » du détail d'une requête reste vide ;
+- derrière Cloudflare ou un tunnel, Traefik ne voit que l'adresse du proxy (par exemple
+  `172.20.x.x`). La carte et les « Top client IPs » ne montrent alors pas les vrais visiteurs.
+
+Pour corriger ça, édite `traefik.yml` (Web Server → Traefik → **Modify**) et complète le
+bloc `accessLog` :
 
 ```yaml
 accessLog:
@@ -34,10 +39,18 @@ accessLog:
       names:
         User-Agent: keep
         X-Request-Id: keep
+        Cf-Connecting-Ip: keep
+        X-Forwarded-For: keep
+        X-Real-Ip: keep
 ```
 
-Puis redémarre Traefik (Web Server → Traefik → **Reload**). Seuls ces deux en-têtes
-sont gardés : les cookies et les en-têtes `Authorization` ne sont jamais écrits.
+Puis redémarre Traefik (Web Server → Traefik → **Reload**). Seuls ces en-têtes sont gardés :
+les cookies et les en-têtes `Authorization` ne sont jamais écrits. Traffiq prend la vraie IP
+dans `Cf-Connecting-Ip`, puis dans la première adresse publique de `X-Forwarded-For`. L'adresse
+du proxy reste visible dans le détail d'une requête (« Proxy peer »).
+
+Les requêtes enregistrées avant ce changement gardent l'adresse du proxy : la carte se remplit
+avec le nouveau trafic.
 
 > Si tu désactives puis réactives « Requests » dans Dokploy, il réécrit le bloc
 > `accessLog` sans les `fields` : refais cette étape.
@@ -79,6 +92,11 @@ la branche `master`.
 
 - **Données** : la base SQLite est dans le volume `traffiq-data`. Elle survit aux
   redéploiements. Choisis la durée de conservation dans Settings (14 jours par défaut).
+- **Géolocalisation** : au premier démarrage, Traffiq télécharge la base DB-IP City Lite
+  (environ 60 Mo, puis 130 Mo une fois décompressée) dans le volume de données, et la
+  rafraîchit chaque mois. Les recherches se font en mémoire : aucune IP de visiteur n'est
+  envoyée à l'extérieur. Pour désactiver la géolocalisation, mets `GEOIP=false`. La base est
+  sous licence CC BY 4.0 : l'attribution « IP Geolocation by DB-IP » figure sur la page Map.
 - **Premier démarrage** : seuls les 64 derniers Mo du log sont importés (`BACKFILL_BYTES`).
 - **Nettoyage nocturne de Dokploy** : chaque nuit, Dokploy remplace le log par ses 1000
   dernières lignes. Traffiq détecte ce remplacement et n'importe pas ces lignes en double.

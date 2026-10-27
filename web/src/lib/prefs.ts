@@ -21,11 +21,16 @@ function browserTz() {
   }
 }
 
-const DEFAULTS: Prefs = { interval: 5, defRange: '1h', theme: 'dark', tz: browserTz(), accent: 'violet' };
+const DEFAULTS: Prefs = { interval: 5, defRange: '7d', theme: 'dark', tz: browserTz(), accent: 'violet' };
+// Bump when a default changes so previously saved values for it are dropped once.
+const VERSION = 2;
 
 export function loadPrefs(): Prefs {
   try {
-    return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) || '{}') };
+    const saved = JSON.parse(localStorage.getItem(KEY) || '{}');
+    if ((saved.v ?? 1) < 2) delete saved.defRange; // v2: default range became 7d
+    delete saved.v;
+    return { ...DEFAULTS, ...saved };
   } catch {
     return DEFAULTS;
   }
@@ -35,7 +40,7 @@ export function usePrefs() {
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
   useEffect(() => {
     try {
-      localStorage.setItem(KEY, JSON.stringify(prefs));
+      localStorage.setItem(KEY, JSON.stringify({ ...prefs, v: VERSION }));
     } catch {
       /* storage unavailable: preferences just won't persist */
     }

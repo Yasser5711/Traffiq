@@ -3,7 +3,7 @@
 import { and, asc, avg, count, desc, eq, gte, inArray, lt, lte, max, sql, sum, type SQL } from 'drizzle-orm';
 import { db } from './db';
 import { domains as domainsT, minuteStats, requests } from './schema';
-import type { DomainStat, EndpointStat, Overview, RequestDetail, RequestPage, RequestRow, Series, Totals } from '../shared/types';
+import type { DomainStat, EndpointStat, GeoStats, Overview, RequestDetail, RequestPage, RequestRow, Series, Totals } from '../shared/types';
 
 const MIN = 60_000;
 const BUCKET_OPTIONS = [0.5, 1, 2, 5, 10, 15, 20, 30, 60, 120, 180, 240, 360, 720, 1440];
@@ -241,6 +241,7 @@ export interface RequestQuery extends Scope {
   status?: string; // "4xx" or "404"
   path?: string;
   ip?: string;
+  country?: string; // ISO code, or '-' for unknown location
   minDur?: number;
   sort: 'ts' | 'domain' | 'status' | 'dur' | 'ip' | 'size';
   dir: 'asc' | 'desc';
@@ -275,6 +276,7 @@ export function requestLog(q: RequestQuery): RequestPage {
     q.path ? contains(requests.path, q.path) : undefined,
     q.ip ? contains(requests.ip, q.ip) : undefined,
     q.minDur ? gte(requests.dur, q.minDur) : undefined,
+    q.country ? (q.country === '-' ? sql`coalesce(${requests.country}, '') = ''` : eq(requests.country, q.country)) : undefined,
   );
 
   const g = db.select({ all: count(), c2, c3, c4, c5, newest: max(requests.ts) }).from(requests).where(base).get();
@@ -294,6 +296,7 @@ export function requestLog(q: RequestQuery): RequestPage {
       dur: requests.dur,
       size: requests.size,
       ip: requests.ip,
+      country: requests.country,
     })
     .from(requests)
     .where(where)
@@ -308,6 +311,49 @@ export function requestLog(q: RequestQuery): RequestPage {
     groups: { all: g?.all ?? 0, '2xx': Number(g?.c2 ?? 0), '3xx': Number(g?.c3 ?? 0), '4xx': Number(g?.c4 ?? 0), '5xx': Number(g?.c5 ?? 0) },
     newest: g?.newest ?? 0,
   };
+}
+
+const MAX_POINTS = 400;
+
+export function geo(scope: Scope): GeoStats {
+  const known = and(rawWhere(scope), sql`${requests.country} <> ''`);
+  const countries = db
+    .select({ country: requests.country, name: max(requests.countryName), count: count(), errors })
+    .from(requests)
+    .where(known)
+    .groupBy(requests.country)
+    .orderBy(desc(count()))
+    .all()
+    .map(r => ({ country: r.country!, name: r.name ?? r.country!, count: r.count, errors: Number(r.errors) }));
+
+  const points = db
+    .select({
+      country: requests.country,
+      city: requests.city,
+      lat: avg(requests.lat),
+      lon: avg(requests.lon),
+      count: count(),
+      errors,
+    })
+    .from(requests)
+    .where(and(known, sql`${requests.lat} is not null`))
+    .groupBy(requests.country, requests.city)
+    .orderBy(desc(count()))
+    .limit(MAX_POINTS)
+    .all()
+    .map(r => ({ country: r.country!, city: r.city ?? '', lat: Number(r.lat), lon: Number(r.lon), count: r.count, errors: Number(r.errors) }));
+
+  const t = db
+    .select({
+      all: count(),
+      unknown: sql<number>`sum(case when ${requests.country} = '' then 1 else 0 end)`,
+      pending: sql<number>`sum(case when ${requests.country} is null then 1 else 0 end)`,
+    })
+    .from(requests)
+    .where(rawWhere(scope))
+    .get();
+
+  return { countries, points, total: t?.all ?? 0, unknown: Number(t?.unknown ?? 0), pending: Number(t?.pending ?? 0) };
 }
 
 export function requestById(id: number): RequestDetail | null {

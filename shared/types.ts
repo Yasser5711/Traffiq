@@ -12,9 +12,15 @@ export interface RequestRow {
   dur: number; // ms
   size: number; // bytes
   ip: string;
+  country: string | null; // ISO 3166-1 alpha-2; '' unknown, null not looked up
 }
 
 export interface RequestDetail extends RequestRow {
+  peer: string;
+  countryName: string | null;
+  city: string | null;
+  lat: number | null;
+  lon: number | null;
   route: string;
   proto: string;
   scheme: string;
@@ -82,6 +88,22 @@ export interface RequestPage {
   newest: number; // ts of newest row matching (for "fresh" highlighting)
 }
 
+export interface GeoStats {
+  countries: { country: string; name: string; count: number; errors: number }[];
+  points: { country: string; city: string; lat: number; lon: number; count: number; errors: number }[];
+  total: number;
+  unknown: number; // private addresses or no match
+  pending: number; // not geolocated yet
+}
+
+export interface GeoStatus {
+  enabled: boolean;
+  loaded: boolean;
+  downloading: boolean;
+  builtAt: number | null;
+  error: string | null;
+}
+
 export type ConnState = 'connected' | 'reconnecting' | 'disconnected';
 
 export interface Status {
@@ -94,4 +116,5 @@ export interface Status {
   retention: string;
   authEnabled: boolean;
   version: string;
+  geo: GeoStatus;
 }

@@ -2,9 +2,10 @@
 // Handles log rotation (inode change) and truncation (size shrinks).
 
 import { closeSync, openSync, readSync, statSync } from 'node:fs';
-import { eq, lt, max, sql } from 'drizzle-orm';
+import { and, eq, isNull, lt, max, sql } from 'drizzle-orm';
 import { config, RETENTIONS } from './config';
 import { db, setting } from './db';
+import { geoReady, lookup } from './geo';
 import { domains as domainsT, logCursor, minuteStats, requests } from './schema';
 import { parseLine, type ParsedRequest } from './parse';
 import type { ConnState } from '../shared/types';
@@ -62,8 +63,11 @@ function store(rows: ParsedRequest[], cutoff: number) {
     if (!services.has(r.domain) || r.service) services.set(r.domain, r.service);
   }
 
+  // Until the GeoIP database is loaded, leave geo columns null; backfillGeo() fills them.
+  const values = geoReady() ? keep.map(r => ({ ...r, ...lookup(r.ip) })) : keep;
+
   db.transaction(tx => {
-    for (let i = 0; i < keep.length; i += INSERT_BATCH) tx.insert(requests).values(keep.slice(i, i + INSERT_BATCH)).run();
+    for (let i = 0; i < values.length; i += INSERT_BATCH) tx.insert(requests).values(values.slice(i, i + INSERT_BATCH)).run();
     for (const m of minutes.values()) {
       tx.insert(minuteStats)
         .values(m)
@@ -198,6 +202,22 @@ function fail(msg: string) {
   if (state.lastError !== msg) console.warn('[collector]', msg);
   state.lastError = msg;
   state.lastErrorAt = Date.now();
+}
+
+/** Geolocates rows stored before the GeoIP database was available, one IP at a time. */
+export async function backfillGeo() {
+  if (!geoReady()) return;
+  let done = 0;
+  for (;;) {
+    const ips = db.selectDistinct({ ip: requests.ip }).from(requests).where(isNull(requests.country)).limit(500).all();
+    if (!ips.length) break;
+    db.transaction(tx => {
+      for (const { ip } of ips) tx.update(requests).set(lookup(ip)).where(and(eq(requests.ip, ip), isNull(requests.country))).run();
+    });
+    done += ips.length;
+    await Bun.sleep(0); // let requests through between batches
+  }
+  if (done) console.log(`[geo] geolocated ${done} addresses already stored`);
 }
 
 export function prune() {

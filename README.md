@@ -4,7 +4,9 @@
 
 Self-hosted dashboard for the HTTP traffic of a Dokploy server. It tails Traefik's JSON
 access log, stores every request in SQLite and shows live KPIs, charts, failing/slow
-endpoints and a searchable request log.
+endpoints, a world map of where visitors come from and a searchable request log.
+
+IP geolocation by [DB-IP](https://db-ip.com) (City Lite, CC BY 4.0).
 
 **Stack:** Bun · Hono · SQLite (Drizzle ORM) · React 19 + Vite · one process, one container.
 
@@ -43,6 +45,9 @@ Migrations in `./drizzle` are applied automatically at startup.
 | `SESSION_SECRET` | `AUTH_PASSWORD` | Key used to sign session cookies |
 | `SERVER_NAME` | `vps-01` | Name shown in the sidebar |
 | `IGNORE_HOSTS` | – | Comma-separated hosts never recorded (e.g. the dashboard's own domain) |
+| `GEOIP` | `true` | Geolocate visitors with DB-IP City Lite (`false` to turn off) |
+| `GEOIP_PATH` | `/data/geo/dbip-city-lite.mmdb` | GeoIP database file |
+| `GEOIP_AUTO_DOWNLOAD` | `true` | Download the database on first start and refresh it monthly |
 | `BACKFILL_BYTES` | `67108864` | On first start, import only this many trailing bytes of the log |
 
 ## Layout
