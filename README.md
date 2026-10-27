@@ -6,6 +6,8 @@ endpoints and a searchable request log.
 
 **Stack:** Bun · Hono · SQLite (Drizzle ORM) · React 19 + Vite · one process, one container.
 
+Deployment on Dokploy: see [DEPLOY.md](DEPLOY.md).
+
 ## Development
 
 ```bash

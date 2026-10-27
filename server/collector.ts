@@ -95,6 +95,17 @@ function store(rows: ParsedRequest[], cutoff: number) {
 let ino = '';
 let offset = -1;
 let carry = '';
+// When we start reading a file we haven't tracked byte-by-byte (first start, or after
+// rotation), part of it may already be stored. Dokploy's nightly cleanup, for instance,
+// replaces the log with its last 1000 lines. Until `replayEnd`, skip entries not newer
+// than what the database already holds.
+let replayEnd = 0;
+let replayTs = 0;
+
+function startReplay(size: number) {
+  replayEnd = size;
+  replayTs = state.lastEvent ?? 0;
+}
 
 function retentionMs() {
   return RETENTIONS[setting('retention', '14d')] ?? RETENTIONS['14d']!;
@@ -113,7 +124,10 @@ function poll() {
   if (offset < 0) {
     const saved = getCursor(path);
     if (saved && saved.ino === curIno && saved.offset <= st.size) offset = saved.offset;
-    else offset = Math.max(0, st.size - config.backfillBytes);
+    else {
+      offset = Math.max(0, st.size - config.backfillBytes);
+      startReplay(st.size);
+    }
     ino = curIno;
     carry = '';
   } else if (curIno !== ino || st.size < offset) {
@@ -121,6 +135,7 @@ function poll() {
     ino = curIno;
     offset = 0;
     carry = '';
+    startReplay(st.size);
   }
   if (st.size === offset) {
     ok();
@@ -141,6 +156,7 @@ function poll() {
     while (offset < st.size) {
       const n = readSync(fd, buf, 0, Math.min(CHUNK, st.size - offset), offset);
       if (n <= 0) break;
+      const replaying = offset < replayEnd;
       offset += n;
       const text = carry + buf.toString('utf8', 0, n);
       const lines = text.split('\n');
@@ -152,7 +168,7 @@ function poll() {
       const rows: ParsedRequest[] = [];
       for (const l of lines) {
         const r = parseLine(l.trim());
-        if (r) rows.push(r);
+        if (r && !(replaying && r.ts <= replayTs)) rows.push(r);
       }
       state.linesTotal += lines.length;
       if (rows.length) {

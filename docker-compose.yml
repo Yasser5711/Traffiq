@@ -1,0 +1,21 @@
+# Deploy on Dokploy as a "Docker Compose" service (see DEPLOY.md).
+# The domain is added in Dokploy's Domains tab (service: trafficlens, port: 3000).
+services:
+  trafficlens:
+    build: .
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      AUTH_PASSWORD: ${AUTH_PASSWORD:?Set AUTH_PASSWORD in the Environment tab}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      SERVER_NAME: ${SERVER_NAME:-vps-01}
+      IGNORE_HOSTS: ${IGNORE_HOSTS:-}
+    volumes:
+      # Mount the whole directory (not the file): Dokploy's log cleanup replaces
+      # access.log with a new file, which a single-file bind mount would not follow.
+      - /etc/dokploy/traefik/dynamic:/traefik:ro
+      - trafficlens-data:/data
+
+volumes:
+  trafficlens-data:
