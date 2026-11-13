@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "dev": "concurrently -k -n sim,api,web -c gray,magenta,cyan \"bun run sim\" \"bun run dev:api\" \"bun run dev:web\"",
     "dev:api": "bun --watch server/index.ts",
